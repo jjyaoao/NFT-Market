@@ -14,4 +14,4 @@ npx hardhat node
 npx hardhat run scripts/deploy.js
 ```
 
-![image-20231201171449102](./README/image-20231201171449102.png)
+![Test](./README/Test.png)
