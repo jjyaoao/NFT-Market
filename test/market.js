@@ -84,6 +84,7 @@ describe("Market", function () {
       await listNFT(tokenId);
     }
 
+    expect(await market.getListLength()).to.equal(2);
     await market.connect(accountB).buyNFT(1, { value: ethers.parseUnits('500000000000000', 'wei') })
 
     expect(await nft.ownerOf(1)).to.equal(accountB.address);
