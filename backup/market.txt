@@ -1,0 +1,100 @@
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+
+describe("Market", function () {
+  let usdt, market, nft, accountA, accountB;
+
+  beforeEach(async () => {
+    [accountA, accountB] = await ethers.getSigners();
+    const USDT = await ethers.getContractFactory("cUSDT");
+    usdt = await USDT.deploy();
+    const MyNFT = await ethers.getContractFactory("NFTM");
+    nft = await MyNFT.deploy(accountA.address);
+    const Market = await ethers.getContractFactory("Market");
+    market = await Market.deploy(usdt.target, nft.target);
+
+
+
+    await nft.safeMint(accountB.address);
+    await nft.safeMint(accountB.address);
+    await nft.connect(accountB).setApprovalForAll(accountA.address, true);
+    // 授权
+    await nft.connect(accountB).setApprovalForAll(market.target, true);
+
+    await usdt.approve(market.target, "1000000000000000000000000");
+  });
+
+  it('its erc20 address should be usdt', async function () {
+    expect(await market.erc20()).to.equal(usdt.target);
+  });
+
+  it('its erc721 address should be nft', async function () {
+    expect(await market.erc721()).to.equal(nft.target);
+  });
+
+  it('account B should have 2 nfts', async function () {
+    expect(await nft.balanceOf(accountB.address)).to.equal(2);
+  });
+
+  it('account A should have usdt', async function () {
+    expect(await usdt.balanceOf(accountA.address)).to.equal("100000000000000000000000000");
+  });
+
+  it('account B can list two nfts to market', async function () {
+    const price = "0x0000000000000000000000000000000000000000000000000001c6bf52634000";
+
+    expect(await nft['safeTransferFrom(address,address,uint256,bytes)'](accountB.address, market.target, 0, price)).to.emit(market, "NewOrder");
+    expect(await nft['safeTransferFrom(address,address,uint256,bytes)'](accountB.address, market.target, 1, price)).to.emit(market, "NewOrder");
+
+    expect(await nft.balanceOf(accountB.address)).to.equal(0);
+    expect(await nft.balanceOf(market.target)).to.equal(2);
+    expect(await market.isListed(0)).to.equal(true);
+    expect(await market.isListed(1)).to.equal(true);
+
+    expect(await market.getOrderLength()).to.equal(2);
+    expect((await market.connect(accountB).getMyNFTs())[0][0]).to.equal(accountB.address);
+    expect((await market.connect(accountB).getMyNFTs())[0][1]).to.equal(0);
+    expect((await market.connect(accountB).getMyNFTs())[0][2]).to.equal(price);
+
+  });
+
+  // Test that accountA can list two NFTs on the market
+  it('account A can list two nfts on the market', async function () {
+    // 假设 accountB 的两个 NFT 的标识符是 0 和 1
+  });
+
+
+
+  // Test that accountA can unlist an NFT from the market
+  it('accountA can unlist one nft from market', async function () {
+    // Make sure that the NFT is listed first
+    const tokenId = 1;
+
+    // Make sure that accountA is the seller
+    // If accountA is not the seller, this test will fail
+    await market.connect(accountA).cancelOrder(tokenId);
+    expect(await market.isListed(tokenId)).to.equal(false);
+  });
+
+  // Test that accountA can change the price of an NFT on the market
+  it('accountA can change price of nft on the market', async function () {
+    const tokenId = 1;
+    const newPrice = ethers.utils.parseUnits("2", "ether");
+
+    // Make sure that accountA is the seller
+    await market.connect(accountA).changePrice(tokenId, newPrice);
+
+  });
+
+  // Test that accountB can buy an NFT from the market
+  it('accountB can buy nft from market', async function () {
+    const tokenId = 1;
+    const salePrice = ethers.utils.parseUnits("1", "ether");
+
+    // Assume accountB has sufficient USDT and has approved the market contract to spend the tokens
+    await market.connect(accountB).buy(tokenId);
+  });
+
+
+
+})
